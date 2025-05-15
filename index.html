@@ -113,23 +113,58 @@
         
         .email-form {
             display: flex;
+            flex-direction: column;
             gap: 1rem;
             margin-bottom: 1rem;
         }
         
-        .email-input {
-            flex: 1;
+        .input-group {
+            position: relative;
+            width: 100%;
+        }
+        
+        .required-indicator {
+            position: absolute;
+            top: -0.5rem;
+            right: 0.5rem;
+            font-size: 0.75rem;
+            background-color: var(--light);
+            color: var(--secondary);
+            padding: 0 0.25rem;
+            border-radius: 2px;
+            font-weight: 500;
+        }
+        
+        .email-input, .industry-select, .other-industry-input {
             padding: 1rem 1.5rem;
             border-radius: 12px;
-            border: 1px solid rgba(30, 41, 59, 0.1);
+            border: 1px solid rgba(16, 25, 53, 0.2);
             font-size: 1rem;
             outline: none;
             transition: all 0.3s ease;
+            width: 100%;
         }
         
-        .email-input:focus {
+        .email-input:focus, .industry-select:focus, .other-industry-input:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(53, 99, 233, 0.2);
+        }
+        
+        .email-input:invalid {
+            border-color: var(--secondary);
+        }
+        
+        .email-input:invalid:focus {
+            box-shadow: 0 0 0 3px rgba(16, 25, 53, 0.2);
+        }
+        
+        .industry-select {
+            color: #64748B;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1.5rem center;
+            background-size: 1rem;
         }
         
         .submit-btn {
@@ -141,6 +176,25 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
+            margin-top: 0.5rem;
+        }
+        
+        .submit-btn:hover:not(:disabled) {
+            background-color: #2954D8;
+            transform: translateY(-2px);
+        }
+        
+        .submit-btn:disabled {
+            background-color: #CBD5E1;
+            color: #64748B;
+            cursor: not-allowed;
+        }
+        
+        .error-message {
+            color: var(--secondary);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: none;
         }
         
         .submit-btn:hover {
@@ -223,8 +277,8 @@
                 padding: 2rem;
             }
             
-            .email-form {
-                flex-direction: column;
+            .industry-select {
+                width: 100%;
             }
             
             .submit-btn {
@@ -245,9 +299,41 @@
             
             <div class="cta-section">
                 <h2 class="cta-header">Get Exclusive Early Access</h2>
-                <form class="email-form" id="emailForm" action="https://formspree.io/f/myzwldlg" method="POST">
-                    <input type="email" class="email-input" name="email" placeholder="Enter your email address" required>
-                    <button type="submit" class="submit-btn">Join Waitlist</button>
+                <form class="email-form" id="emailForm" action="https://formspree.io/f/myzwldlg" method="POST" novalidate>
+                    <div class="input-group">
+                        <input type="email" class="email-input" name="email" id="emailInput" placeholder="Enter your email address *" required>
+                        <span class="required-indicator">Required</span>
+                    </div>
+                    <div id="emailError" class="error-message">Please enter a valid email address</div>
+                    <select name="industry" id="industrySelect" class="industry-select">
+                        <option value="" disabled selected>Select your industry (optional)</option>
+                        <option value="SaaS">SaaS</option>
+                        <option value="E-commerce">E-commerce</option>
+                        <option value="Finance">Finance & Banking</option>
+                        <option value="Insurance">Insurance</option>
+                        <option value="Healthcare">Healthcare</option>
+                        <option value="Pharmaceuticals">Pharmaceuticals</option>
+                        <option value="Real Estate">Real Estate</option>
+                        <option value="Construction">Construction</option>
+                        <option value="Education">Education</option>
+                        <option value="Technology">Technology</option>
+                        <option value="Telecommunications">Telecommunications</option>
+                        <option value="Manufacturing">Manufacturing</option>
+                        <option value="Retail">Retail</option>
+                        <option value="Hospitality">Hospitality & Tourism</option>
+                        <option value="Transportation">Transportation & Logistics</option>
+                        <option value="Energy">Energy & Utilities</option>
+                        <option value="Legal">Legal Services</option>
+                        <option value="Marketing">Marketing & Advertising</option>
+                        <option value="Media">Media & Entertainment</option>
+                        <option value="Agriculture">Agriculture</option>
+                        <option value="Government">Government</option>
+                        <option value="Nonprofit">Nonprofit</option>
+                        <option value="Consulting">Consulting</option>
+                        <option value="Other">Other (please specify)</option>
+                    </select>
+                    <input type="text" id="otherIndustry" name="other_industry" placeholder="Please specify your industry" class="other-industry-input" style="display: none;">
+                    <button type="submit" id="submitButton" class="submit-btn" disabled>Join Waitlist</button>
                 </form>
                 <p class="privacy-note">We respect your privacy. No spam, ever. Unsubscribe at any time.</p>
                 <div id="successMessage" style="display: none; color: #10B981; margin-top: 1rem; font-weight: 500;">
@@ -302,16 +388,76 @@
         </div>
     </footer>
     <script>
+        // Validate email and enable/disable submit button
+        const emailInput = document.getElementById('emailInput');
+        const submitButton = document.getElementById('submitButton');
+        const emailError = document.getElementById('emailError');
+        
+        function validateEmail(email) {
+            const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+            return re.test(String(email).toLowerCase());
+        }
+        
+        function checkFormValidity() {
+            if (emailInput.value.trim() === '') {
+                submitButton.disabled = true;
+                emailError.style.display = 'none';
+                return false;
+            } else if (!validateEmail(emailInput.value)) {
+                submitButton.disabled = true;
+                emailError.style.display = 'block';
+                return false;
+            } else {
+                submitButton.disabled = false;
+                emailError.style.display = 'none';
+                return true;
+            }
+        }
+        
+        // Check form validity on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            checkFormValidity();
+        });
+        
+        // Input event listeners for real-time validation
+        emailInput.addEventListener('input', checkFormValidity);
+        emailInput.addEventListener('blur', checkFormValidity);
+        
+        // Show/hide the "Other" industry text field based on selection
+        document.getElementById('industrySelect').addEventListener('change', function() {
+            const otherIndustryField = document.getElementById('otherIndustry');
+            if (this.value === 'Other') {
+                otherIndustryField.style.display = 'block';
+                otherIndustryField.required = true;
+            } else {
+                otherIndustryField.style.display = 'none';
+                otherIndustryField.required = false;
+            }
+        });
+        
         document.getElementById('emailForm').addEventListener('submit', function(event) {
             event.preventDefault();
             
+            // Validate form again before submission
+            if (!checkFormValidity()) {
+                emailError.style.display = 'block';
+                return;
+            }
+            
             const form = this;
             const email = form.email.value;
-            const submitButton = form.querySelector('button[type="submit"]');
+            const industry = form.industry.value;
+            const otherIndustry = form.other_industry ? form.other_industry.value : '';
             const successMessage = document.getElementById('successMessage');
             
-            // Store email in localStorage for backup
-            localStorage.setItem('repsai_signup_' + Date.now(), email);
+            // Store form data in localStorage for backup
+            const formData = {
+                email: email,
+                industry: industry === 'Other' ? otherIndustry : industry,
+                timestamp: new Date().toISOString()
+            };
+            
+            localStorage.setItem('repsai_signup_' + Date.now(), JSON.stringify(formData));
             
             // Disable button and show loading state
             submitButton.disabled = true;
@@ -345,6 +491,7 @@
             })
             .finally(() => {
                 submitButton.disabled = false;
+                submitButton.innerText = 'Join Waitlist';
             });
         });
     </script>
